@@ -5,6 +5,24 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 const mongoose = require('mongoose')
+
+const User = require('./models/User')
+
+const passport = require('passport')
+const LocalStrategy = require('passport-local').Strategy
+passport.use(new LocalStrategy({
+  usernameField: 'username',
+  passwordField: 'password',
+},(username, password, done) => {
+  User.findOne({ username })
+    .then((user) => {
+      if(!user || !user.validatePassword(password)) {
+        return done(null, false, { errors: { 'username or password': 'is invalid' } });
+      }
+      return done(null, user);
+    }).catch(done);
+}))
+
 mongoose.connect('mongodb://localhost/moneycord', {useNewUrlParser: true})
   .then(() => console.log('MongoDB connected'))
   .catch(err => {
@@ -26,6 +44,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(passport.initialize())
+app.use(passport.session())
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
